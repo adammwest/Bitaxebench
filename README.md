@@ -2,6 +2,12 @@
 
 A Python-based benchmarking tool for optimizing Bitaxe mining performance by testing different voltage and frequency combinations while monitoring hashrate, temperature, and power efficiency.
 
+## Credits
+Whitey Cookie
+mv777
+shufps
+
+
 ## Features
 
 - Automated benchmarking of different voltage/frequency combinations

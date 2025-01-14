@@ -5,7 +5,7 @@ import signal
 import sys
 import argparse
 
-from test_stratum_server.test_server import start_server
+from test_stratum.test_server import start_server
 
 # ANSI Color Codes
 GREEN = "\033[92m"

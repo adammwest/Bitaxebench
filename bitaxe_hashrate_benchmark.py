@@ -106,7 +106,7 @@ system_reset_done = False
 
 
 # General Configuration Settigns
-sample_interval = 5   # 30 seconds sample interval
+sample_interval = 30   # 30 seconds sample interval
 benchmark_iteration_time = sample_interval*5 # how long each iteration should take
 
 max_temp = 66         # Will stop if temperature reaches or exceeds this value
@@ -266,8 +266,8 @@ def benchmark_iteration(core_voltage, frequency,sample_interval,benchmark_time):
         if len(temp_data) > 5:
             _avg = sum(temp_data[-5:])/5
             status_line = (
-            f"[0/{total_samples:2d}] ?s "
-            f"0% | "
+            f"[0/?] ?s "
+            f"~% | "
             f"V: {core_voltage:4d}mV | "
             f"F: {frequency:4d}MHz | "
             f"T0: {_avg:4.4}°C | "

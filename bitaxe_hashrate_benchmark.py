@@ -5,6 +5,8 @@ import signal
 import sys
 import argparse
 import statistics
+import traceback
+import math
 
 # ANSI Color Codes
 GREEN = "\033[92m"
@@ -94,49 +96,56 @@ bitaxe_ip = f"http://{args.bitaxe_ip}"
 initial_voltage = args.voltage
 initial_frequency = args.frequency
 
-# Configuration
+# Globals
+# Add these variables to the global configuration section
+small_core_count = None
+asic_count = None
+
+# Add a global flag to track whether the system has already been reset
+system_reset_done = False
+
+
+# General Configuration Settigns
 voltage_increment = 25
 frequency_increment = 25
-sample_interval = 30   # 30 seconds sample interval
+sample_interval = 5   # 30 seconds sample interval
+
+benchmark_iteration_time = sample_interval*5 # how long each iteration should take
 max_temp = 66         # Will stop if temperature reaches or exceeds this value
 max_allowed_voltage = 1400
 max_allowed_frequency = 1200
 max_vr_temp = 90  # Maximum allowed voltage regulator temperature
 
 
-# Optimiser Configuration
-# target
-optimisation_target = "hashrate_efficiancy"
+### Optimiser Configuration
+# e.g for Grid search
+# use_optimiser = False
+# n_particles = 20 
 
-# only used for some settings of hashrate_efficiancy
-# this is optimised for first, then another thing is optimised
-control_temp = 50
-control_hashrate = 500 
+# e.g for Particle swarm search
+# use_optimiser = True
+# n_particles = 5 
 
-
-# how long each iteration should take
-sample_interval = 30
-benchmark_iteration_time = sample_interval*5
-
-# setup optimiser
-# if you dont want to use the optimiser set to false
-# at the same time increase n_particles
-# this will have the effect of behaving like grid search 
 use_optimiser = True
-
-#used for grid search and optimiser
 n_particles = 5
 
-# optimiser configs
+
 optimiser_time = 3600 #1H
 convergence_factor = 0.05
 particle_inputs = 2
 pariticle_history = 10
 ps_optimiser= particle_swarm(n_particles,convergence_factor,particle_inputs,pariticle_history)
 
-# Add these variables to the global configuration section
-small_core_count = None
-asic_count = None
+# Cost Function Settings
+# target
+optimisation_target = "hashrate_efficiancy"
+
+# only used for some settings of optimisation_target
+# this is optimised for first, then another thing is optimised
+control_temp = 50
+control_hashrate = 500 
+
+
 
 # Validate core voltages
 if initial_voltage > max_allowed_voltage:
@@ -174,8 +183,6 @@ def fetch_default_settings():
         small_core_count = 0
         asic_count = 0
 
-# Add a global flag to track whether the system has already been reset
-system_reset_done = False
 
 def handle_sigint(signum, frame):
     global system_reset_done
@@ -196,10 +203,10 @@ def handle_sigint(signum, frame):
 signal.signal(signal.SIGINT, handle_sigint)
 
 def get_system_info():
-    retries = 3
+    retries = 5
     for attempt in range(retries):
         try:
-            response = requests.get(f"{bitaxe_ip}/api/system/info", timeout=10)
+            response = requests.get(f"{bitaxe_ip}/api/system/info", timeout=2)
             response.raise_for_status()  # Raise an exception for HTTP errors
             return response.json()
         except requests.exceptions.Timeout:
@@ -231,7 +238,7 @@ def restart_system():
         print(YELLOW + "Restarting Bitaxe system to apply new settings..." + RESET)
         response = requests.post(f"{bitaxe_ip}/api/system/restart", timeout=10)
         response.raise_for_status()  # Raise an exception for HTTP errors
-        time.sleep(60)  # Allow 60s time for the system to restart and start hashing
+        time.sleep(15)  # Takes 15s, we wait for stable temps anyway
     except requests.exceptions.RequestException as e:
         print(RED + f"Error restarting the system: {e}" + RESET)
 
@@ -242,6 +249,7 @@ def benchmark_iteration(core_voltage, frequency,sample_interval,benchmark_time):
     temperatures = []
     power_consumptions = []
     vcores = []
+    hashrates = []
     total_samples = benchmark_time // sample_interval
 
     
@@ -259,7 +267,15 @@ def benchmark_iteration(core_voltage, frequency,sample_interval,benchmark_time):
 
         if len(temp_data) > 5:
             _avg = sum(temp_data[-5:])/5
-            print(f'finding stable temps last:{temp_data[-1]} avg:{_avg}')
+            status_line = (
+            f"[0/{total_samples:2d}] 0s "
+            f"0% | "
+            f"V: {core_voltage:4d}mV | "
+            f"F: {frequency:4d}MHz | "
+            f"T0: {_avg:4.4}°C | "
+            f"T: {int(temp_data[-1]):2d}°C Find stable temps"
+        )
+            print(YELLOW + status_line + RESET)
             if abs(temp_data[-1] - _avg) < 0.1: break
 
             # early exit
@@ -269,7 +285,7 @@ def benchmark_iteration(core_voltage, frequency,sample_interval,benchmark_time):
                 return None, None, None, False 
         time.sleep(3)
 
-
+    print(GREEN + f'Found stable temps, Starting benchmark iteration' + RESET)
     info = get_system_info()
     starting_nonce_offset = info['sharesAccepted']
     t0 = time.time()
@@ -314,18 +330,20 @@ def benchmark_iteration(core_voltage, frequency,sample_interval,benchmark_time):
         vcores.append(info.get("coreVoltageActual"))
         temperatures.append(temp)
         power_consumptions.append(power_consumption)
+        gh_hashrate = hash_rate/1000
+        hashrates.append(gh_hashrate)
         
         # Calculate percentage progress
         percentage_progress = ((sample + 1) / total_samples) * 100
 
         elapsed = time.time()-t0
         status_line = (
-            f"[{sample + 1:2d}/{total_samples:2d}] {elapsed:04}s "
+            f"[{sample + 1:2d}/{total_samples:2d}] {elapsed:04.04}s "
             f"{percentage_progress:5.1f}% | "
             f"V: {core_voltage:4d}mV | "
             f"F: {frequency:4d}MHz | "
             f"H: {int(hash_rate):4d} GH/s | "
-            f"T: {int(temp):2d}°C"
+            f"T: {int(temp):2d}°C Benchmark"
         )
         if vr_temp is not None and vr_temp > 0:
             status_line += f" | VR: {int(vr_temp):2d}°C"
@@ -338,33 +356,50 @@ def benchmark_iteration(core_voltage, frequency,sample_interval,benchmark_time):
     
     # Statistics time
     elapsed = time.time()-t0
-    pool_diff = 256
+
 
     # calc our own hashrate we know the pool diff is 256 as we have test pool
-    hashrate_mhs = pool_diff*(info.get("sharesAccepted")-starting_nonce_offset)/elapsed/10000000
+    # hashrate_mhs = pool_diff*(info.get("sharesAccepted")-starting_nonce_offset)/elapsed/10000000
+
+    # Calculting independant samples
+    # Unfortunatly our data is auto correlated because of moving average 
+    # Hashrate Ghs 
+    if elapsed < 600:
+        independant_hashrates = [hashrates[-1]]
+    
+    else:
+        independant_hashrates = []
+        itimes = reversed([math.floor(t/600) for t in times])
+
+        # iterate unique values
+        for idx in list(set(itimes)):
+            # finds the last value from a 600's time blocks
+            independant_hashrates.append(itimes.index(idx)) 
+
+    hashrate_avg = statistics.mean(independant_hashrates) 
+    hashrate_std = statistics.stdev(independant_hashrates)
 
     
     vcore_avg = statistics.mean(vcores)
     vcore_std = statistics.stdev(vcores)
-    v_core_stray = abs(info.get("vcore")-vcore_avg)
+    v_core_stray = abs(core_voltage-vcore_avg)
 
-    temp_max = max(temperatures)
     temp_avg = statistics.mean(temperatures)
     temp_std = statistics.stdev(temperatures)
 
-    power_avg = statistics.mean(power_consumption)
-    power_std = statistics.stdev(power_consumption)
+    power_avg = statistics.mean(power_consumptions)
+    power_std = statistics.stdev(power_consumptions)
 
 
     # Normalised score as we have same data it will converge to the luck of the work items
-    efficiency_jth = power_avg / (hashrate_mhs / 1000000)
+    efficiency_jth = power_avg / (hashrate_avg / 1000000)
 
-    print(GREEN + f"Average Hashrate: {hashrate_mhs:.2f} GH/s (Expected: {expected_hashrate_mhs:.2f} GH/s)" + RESET)
+    print(GREEN + f"Average Hashrate: {hashrate_avg:.2f} GH/s (Expected: {expected_hashrate_mhs:.2f} GH/s)" + RESET)
     print(GREEN + f"Average Temperature: {temp_avg:.2f}°C" + RESET)
     print(GREEN + f"Efficiency: {efficiency_jth:.2f} J/TH" + RESET)
 
     # Keep all data for plotting
-    return  (hashrate_mhs, temp_avg, efficiency_jth, power_avg, temp_std, v_core_stray, vcore_std, power_std)
+    return  (hashrate_avg, temp_avg, efficiency_jth, power_avg, temp_std, v_core_stray, vcore_std, power_std)
     
 
 def save_results():
@@ -427,6 +462,7 @@ def cost_function(avg_hashrate,expected_hashrate, control_hashrate, avg_temp,con
 
 
 def start_benchmarking():
+    global system_reset_done
 
     # make bounds
     vcore_range = max_allowed_voltage-initial_voltage
@@ -459,7 +495,7 @@ def start_benchmarking():
         print("Use this tool at your own risk. The author(s) are not responsible for any damage to your hardware.")
         print("\nNOTE: Ambient temperature significantly affects these results. The optimal settings found may not")
         print("work well if room temperature changes substantially. Re-run the benchmark if conditions change.\n")
-        
+        input(RED + "By Pressing Enter You acknowledge this risk"+ RESET)
         
         while (time.time()-start_optimisation_time<optimiser_time):
             
@@ -478,7 +514,7 @@ def start_benchmarking():
             set_system_settings(current_voltage, current_frequency)
 
             # calulate expected
-            expected_hashrate_mhs = expected_hashrate_mhs = current_frequency * ((small_core_count * asic_count) / 1000000)
+            expected_hashrate_ghs = current_frequency * ((small_core_count * asic_count) / (10**9))
 
             # make sample
             result_data = benchmark_iteration(current_voltage, current_frequency,sample_interval,benchmark_iteration_time)
@@ -486,7 +522,8 @@ def start_benchmarking():
             if result_data:
                 # update optimiser, since optimiser will try same again (deterministic) if failed we dont need retry loop
                 # this is where we get our score for the optimiser
-                score = cost_function(hashrate_mhs,expected_hashrate_mhs,control_hashrate,temp_avg,control_temp,efficiency_jth,optimisation_target)
+                (hashrate_ghs, temp_avg, efficiency_jth,power_avg,temp_std,v_core_stray,vcore_std,power_std) = result_data
+                score = cost_function(hashrate_ghs,expected_hashrate_ghs,control_hashrate,temp_avg,control_temp,efficiency_jth,optimisation_target)
                 ps_optimiser.add_new_postion_score(ps_optimiser.current_particle_i,current_pos,score)
                 ps_optimiser.next_particle()
                 ps_optimiser.get_best_input()
@@ -500,7 +537,7 @@ def start_benchmarking():
 
 
             elif result_data is None:
-                (hashrate_mhs, temp_avg, efficiency_jth,power_avg,temp_std,v_core_stray,vcore_std,power_std) = 0,0,0,0,0,0,0
+                (hashrate_ghs, temp_avg, efficiency_jth,power_avg,temp_std,v_core_stray,vcore_std,power_std) = 0,0,0,0,0,0,0,0
 
             
             # used the item in the queue
@@ -517,7 +554,7 @@ def start_benchmarking():
                 results.append({
                     "coreVoltage": current_voltage,
                     "frequency": current_frequency,
-                    "averageHashRate": hashrate_mhs,
+                    "averageHashRate": hashrate_ghs,
                     "averageTemperature": temp_avg,
                     "efficiencyJTH": efficiency_jth,
                     "powerAvg": power_avg,
@@ -543,6 +580,7 @@ def start_benchmarking():
 
     except Exception as e:
         print(RED + f"An unexpected error occurred: {e}" + RESET)
+        print(traceback.format_exc())
         if results:
             reset_to_best_setting()
             save_results()

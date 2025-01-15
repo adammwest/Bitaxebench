@@ -21,6 +21,26 @@ A Python-based benchmarking tool for optimizing Bitaxe mining performance by tes
 - Stable temps before sampling
 - Independant hashrate samples only
 
+
+
+## Optimiser
+https://en.wikipedia.org/wiki/Particle_swarm_optimization
+the optimiser is a global optimiser that has its inital postions spread out evenly, 
+so should converge to the global minimum given we have smooth convex space to search
+
+# Cost function
+what the optimser tends towards
+- `efficiancy` 
+- `hashrate`
+- `hashrate_expected` ratio of hashrate/expected hashrate
+- `hashrate_temp` optimise temp to control temp and hashrate
+- `hashrate_efficiancy` optimise hashrate to control temp and efficiancy
+- `efficiancy_temp` optimise temp to control temp and efficiancy
+
+you can add your own for any combination of 
+[`efficiancy`, `temp`, `hashrate`]
+
+
 ## Prerequisites
 
 - Python 3.11 or higher
@@ -125,18 +145,22 @@ The benchmark results are saved to `bitaxe_benchmark_results.json`, containing:
 
 The tool follows this process:
 1. Starts with user-specified or default voltage/frequency
-2. Tests each combination for 20 minutes
-3. Validates hashrate is within 8% of theoretical maximum
-4. Incrementally adjusts settings:
-   - Increases frequency if stable
-   - Increases voltage if unstable
-   - Stops at thermal or stability limits
-5. Records and ranks all successful configurations
-6. Automatically applies the best performing stable settings
+2. always find stable temp before starting benchmark sample
+3. Uses PSO algorithom with a Cost function to optimise a numeric goal
+4. Records and ranks all successful configurations
+5. Automatically applies the best performing stable settings
+
+## Todo 
+* add Shufps test struct server for the same jobs and allowing lower pool diff reducing benchmarking time and hashrate variance
+
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+
+
+
 
 ## License
 

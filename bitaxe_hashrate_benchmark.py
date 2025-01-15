@@ -110,8 +110,8 @@ system_reset_done = False
 
 
 # General Configuration Settigns
-sample_interval = 30   # 30 seconds sample interval
-benchmark_iteration_time = sample_interval*40 # how long each iteration should take
+sample_interval = 5   # 30 seconds sample interval
+benchmark_iteration_time = 30#sample_interval*40 # how long each iteration should take
 
 max_temp = 66         # Will stop if temperature reaches or exceeds this value
 max_allowed_voltage = 1300
@@ -516,7 +516,7 @@ def start_benchmarking():
             set_system_settings(current_voltage, current_frequency)
 
             # calulate expected
-            expected_hashrate_ghs = current_frequency * ((small_core_count * asic_count) / (10**9))
+            expected_hashrate_ghs = current_frequency* 1000000 * ((small_core_count * asic_count) / (10**9))
 
             # make sample
             result_data = benchmark_iteration(current_voltage, current_frequency,sample_interval,benchmark_iteration_time)

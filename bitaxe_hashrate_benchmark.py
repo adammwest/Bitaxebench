@@ -31,6 +31,10 @@ def parse_arguments():
     return parser.parse_args()
 
 class particle_swarm():
+    """
+    Super Simple Particle swarm Optimiser
+    Best paritcle extrapolates avg of others
+    """
     def __init__(self,n,factor,input_dims,history):
         self.history_size = history
         self.particles_n = n
@@ -54,7 +58,7 @@ class particle_swarm():
         best_score_per_particle = [max(i) for i in self.score_history]
         best_score = max(best_score_per_particle)
 
-        #where
+        # where is best
         best_particle = best_score_per_particle.index(best_score)
         best_loc = self.score_history[best_particle].index(best_score)
 
@@ -496,8 +500,9 @@ def start_benchmarking():
                 new_position = ps_optimiser.update_postiton(ps_optimiser.current_particle_i)
                 queue.append(new_position)
 
-                if not use_optimiser: 
+                if use_optimiser is False: 
                     # after we ge to the point of needing new points our grid search is over
+                    print('breaking')
                     break
 
             # Main optimisation step

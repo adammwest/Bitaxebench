@@ -521,12 +521,13 @@ def start_benchmarking():
             # calulate expected
             expected_hashrate_ghs = current_frequency* 1000000 * ((small_core_count * asic_count) / (10**9))
 
-            # make sample
+            # Make sample
             result_data = benchmark_iteration(current_voltage, current_frequency,sample_interval,benchmark_iteration_time)
 
             if result_data:
                 # update optimiser, since optimiser will try same again (deterministic) if failed we dont need retry loop
                 # this is where we get our score for the optimiser
+                # update the optimiser with new infomation
                 (hashrate_ghs, temp_avg, efficiency_jth,power_avg,temp_std,v_core_stray,vcore_std,power_std) = result_data
                 score = cost_function(hashrate_ghs,expected_hashrate_ghs,control_hashrate,temp_avg,control_temp,efficiency_jth,optimisation_target)
                 ps_optimiser.add_new_postion_score(ps_optimiser.current_particle_i,current_pos,score)

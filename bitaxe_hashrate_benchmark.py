@@ -260,7 +260,7 @@ def benchmark_iteration(core_voltage, frequency,sample_interval,benchmark_time):
     
 
     # Calculate expected hashrate based on frequency
-    expected_hashrate_ghs = frequency * ((small_core_count * asic_count) / (10**9))
+    expected_hashrate_ghs = frequency* 1000000 * ((small_core_count * asic_count) / (10**9))
 
     # First step of benchmarking 
     # find stable temps

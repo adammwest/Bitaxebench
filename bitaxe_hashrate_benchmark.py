@@ -106,14 +106,12 @@ system_reset_done = False
 
 
 # General Configuration Settigns
-voltage_increment = 25
-frequency_increment = 25
 sample_interval = 5   # 30 seconds sample interval
-
 benchmark_iteration_time = sample_interval*5 # how long each iteration should take
+
 max_temp = 66         # Will stop if temperature reaches or exceeds this value
-max_allowed_voltage = 1400
-max_allowed_frequency = 1200
+max_allowed_voltage = 1300
+max_allowed_frequency = 650
 max_vr_temp = 90  # Maximum allowed voltage regulator temperature
 
 
@@ -127,10 +125,10 @@ max_vr_temp = 90  # Maximum allowed voltage regulator temperature
 # n_particles = 5 
 
 use_optimiser = True
-n_particles = 5
+n_particles = 3
 
 
-optimiser_time = 3600 #1H
+optimiser_time = 3600 
 convergence_factor = 0.05
 particle_inputs = 2
 pariticle_history = 10
@@ -203,10 +201,10 @@ def handle_sigint(signum, frame):
 signal.signal(signal.SIGINT, handle_sigint)
 
 def get_system_info():
-    retries = 5
+    retries = 10
     for attempt in range(retries):
         try:
-            response = requests.get(f"{bitaxe_ip}/api/system/info", timeout=2)
+            response = requests.get(f"{bitaxe_ip}/api/system/info", timeout=5)
             response.raise_for_status()  # Raise an exception for HTTP errors
             return response.json()
         except requests.exceptions.Timeout:
@@ -268,7 +266,7 @@ def benchmark_iteration(core_voltage, frequency,sample_interval,benchmark_time):
         if len(temp_data) > 5:
             _avg = sum(temp_data[-5:])/5
             status_line = (
-            f"[0/{total_samples:2d}] 0s "
+            f"[0/{total_samples:2d}] ?s "
             f"0% | "
             f"V: {core_voltage:4d}mV | "
             f"F: {frequency:4d}MHz | "
@@ -330,8 +328,7 @@ def benchmark_iteration(core_voltage, frequency,sample_interval,benchmark_time):
         vcores.append(info.get("coreVoltageActual"))
         temperatures.append(temp)
         power_consumptions.append(power_consumption)
-        gh_hashrate = hash_rate/1000
-        hashrates.append(gh_hashrate)
+        hashrates.append(hash_rate)
         
         # Calculate percentage progress
         percentage_progress = ((sample + 1) / total_samples) * 100
@@ -390,9 +387,7 @@ def benchmark_iteration(core_voltage, frequency,sample_interval,benchmark_time):
     power_avg = statistics.mean(power_consumptions)
     power_std = statistics.stdev(power_consumptions)
 
-
-    # Normalised score as we have same data it will converge to the luck of the work items
-    efficiency_jth = power_avg / (hashrate_avg / 1000000)
+    efficiency_jth = power_avg / (hashrate_avg / 1000)
 
     print(GREEN + f"Average Hashrate: {hashrate_avg:.2f} GH/s (Expected: {expected_hashrate_mhs:.2f} GH/s)" + RESET)
     print(GREEN + f"Average Temperature: {temp_avg:.2f}°C" + RESET)
@@ -479,10 +474,7 @@ def start_benchmarking():
                 ] for i in range(n_particles)
             ]
 
-
     start_optimisation_time = time.time()
-
-    best_history = []
 
     # Main benchmarking process
     try:
@@ -526,14 +518,6 @@ def start_benchmarking():
                 score = cost_function(hashrate_ghs,expected_hashrate_ghs,control_hashrate,temp_avg,control_temp,efficiency_jth,optimisation_target)
                 ps_optimiser.add_new_postion_score(ps_optimiser.current_particle_i,current_pos,score)
                 ps_optimiser.next_particle()
-                ps_optimiser.get_best_input()
-                
-                if ps_optimiser.best_score > max([i[1] for i in best_history]):
-                    best_history.append([ps_optimiser.best_domain,ps_optimiser.best_score])
-
-                if len(best_history)==0:
-                    best_history.append([ps_optimiser.best_domain,ps_optimiser.best_score])
-
 
 
             elif result_data is None:

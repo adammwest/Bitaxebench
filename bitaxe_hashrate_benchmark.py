@@ -129,7 +129,7 @@ max_vr_temp = 90  # Maximum allowed voltage regulator temperature
 # n_particles = 5 
 
 use_optimiser = True
-n_particles = 3
+n_particles = 4
 
 
 optimiser_time = 18000

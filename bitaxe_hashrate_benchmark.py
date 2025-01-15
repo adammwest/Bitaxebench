@@ -439,6 +439,9 @@ def cost_function(avg_hashrate,expected_hashrate, control_hashrate, avg_temp,con
     hashrate_ratio = avg_hashrate/expected_hashrate
     efficiency_target = 20/efficiency_jth
 
+    temp_control_term = (1+abs(control_temp-avg_temp))
+    hashrate_control_term = (1+abs(control_hashrate-avg_hashrate))
+
     if target == "efficiancy":
         return efficiency_target
     
@@ -449,13 +452,13 @@ def cost_function(avg_hashrate,expected_hashrate, control_hashrate, avg_temp,con
         return hashrate_ratio
 
     elif target == "hashrate_temp":
-        return abs(control_temp/avg_temp)+avg_hashrate
+        return avg_hashrate/temp_control_term
     
     elif target == "hashrate_efficiancy":
-        return abs(control_hashrate/avg_hashrate)+efficiency_target
+        return efficiency_target/hashrate_control_term
 
     elif target == "efficiancy_temp":
-        return abs(control_temp/avg_temp)+hashrate_ratio
+        return efficiency_target/temp_control_term
     
     elif target == "custom":
         # add your own

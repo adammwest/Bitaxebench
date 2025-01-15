@@ -364,9 +364,10 @@ def benchmark_iteration(core_voltage, frequency,sample_interval,benchmark_time):
     # Calculting independant samples
     # Unfortunatly our data is auto correlated because of moving average 
     # Hashrate Ghs 
+    hashrate_std = 0
     if elapsed < 600:
         independant_hashrates = [hashrates[-1]]
-    
+        
     else:
         independant_hashrates = []
         itimes = reversed([math.floor(t/600) for t in times])
@@ -375,10 +376,9 @@ def benchmark_iteration(core_voltage, frequency,sample_interval,benchmark_time):
         for idx in list(set(itimes)):
             # finds the last value from a 600's time blocks
             independant_hashrates.append(itimes.index(idx)) 
+        hashrate_std = statistics.stdev(independant_hashrates)
 
     hashrate_avg = statistics.mean(independant_hashrates) 
-    hashrate_std = statistics.stdev(independant_hashrates)
-
     
     vcore_avg = statistics.mean(vcores)
     vcore_std = statistics.stdev(vcores)

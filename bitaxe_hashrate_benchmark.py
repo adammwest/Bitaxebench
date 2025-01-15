@@ -253,7 +253,7 @@ def benchmark_iteration(core_voltage, frequency,sample_interval,benchmark_time):
     
 
     # Calculate expected hashrate based on frequency
-    expected_hashrate_mhs = frequency * ((small_core_count * asic_count) / 1000000)
+    expected_hashrate_ghs = frequency * ((small_core_count * asic_count) / (10**9))
 
     # First step of benchmarking 
     # find stable temps
@@ -389,7 +389,7 @@ def benchmark_iteration(core_voltage, frequency,sample_interval,benchmark_time):
 
     efficiency_jth = power_avg / (hashrate_avg / 1000)
 
-    print(GREEN + f"Average Hashrate: {hashrate_avg:.2f} GH/s (Expected: {expected_hashrate_mhs:.2f} GH/s)" + RESET)
+    print(GREEN + f"Average Hashrate: {hashrate_avg:.2f} GH/s (Expected: {expected_hashrate_ghs:.2f} GH/s)" + RESET)
     print(GREEN + f"Average Temperature: {temp_avg:.2f}°C" + RESET)
     print(GREEN + f"Efficiency: {efficiency_jth:.2f} J/TH" + RESET)
 

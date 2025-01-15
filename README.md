@@ -16,6 +16,10 @@ A Python-based benchmarking tool for optimizing Bitaxe mining performance by tes
 - Automatic saving of benchmark results
 - Graceful shutdown with best settings retention
 - Docker support for easy deployment
+- Particle swarm optimisation
+- Easy to implemnt cost functions
+- Stable temps before sampling
+- Independant hashrate samples only
 
 ## Prerequisites
 
@@ -92,12 +96,10 @@ The script includes several configurable parameters:
 
 - Maximum chip temperature: 66°C
 - Maximum VR temperature: 90°C
-- Maximum allowed voltage: 1400mV
-- Maximum allowed frequency: 1200MHz
-- Benchmark duration: 20 minutes
+- Maximum allowed voltage: 1300mV
+- Maximum allowed frequency: 650MHz
+- Benchmark duration: 2.5 minutes
 - Sample interval: 30 seconds
-- Voltage increment: 25mV
-- Frequency increment: 25MHz
 
 ## Output
 

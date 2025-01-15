@@ -111,7 +111,7 @@ system_reset_done = False
 
 # General Configuration Settigns
 sample_interval = 30   # 30 seconds sample interval
-benchmark_iteration_time = sample_interval*5 # how long each iteration should take
+benchmark_iteration_time = sample_interval*40 # how long each iteration should take
 
 max_temp = 66         # Will stop if temperature reaches or exceeds this value
 max_allowed_voltage = 1300
@@ -132,8 +132,8 @@ use_optimiser = True
 n_particles = 3
 
 
-optimiser_time = 3600 
-convergence_factor = 0.05
+optimiser_time = 18000
+convergence_factor = 0.1
 particle_inputs = 2
 pariticle_history = 10
 ps_optimiser= particle_swarm(n_particles,convergence_factor,particle_inputs,pariticle_history)
@@ -246,6 +246,9 @@ def restart_system():
 
 def benchmark_iteration(core_voltage, frequency,sample_interval,benchmark_time):
     print(GREEN + f"Starting benchmark for Core Voltage: {core_voltage}mV, Frequency: {frequency}MHz" + RESET)
+    
+    frequency = int(frequency)
+    core_voltage = int(core_voltage)
     times = []
     nonces = []
     temperatures = []
@@ -431,11 +434,13 @@ def reset_to_best_setting():
 
 
 def cost_function(avg_hashrate,expected_hashrate, control_hashrate, avg_temp,control_temp, efficiency_jth,target):
+    # What are we maximising
 
     hashrate_ratio = avg_hashrate/expected_hashrate
+    efficiency_target = 20/efficiency_jth
 
     if target == "efficiancy":
-        return efficiency_jth
+        return efficiency_target
     
     elif target == "hashrate":
         return avg_hashrate
@@ -447,7 +452,7 @@ def cost_function(avg_hashrate,expected_hashrate, control_hashrate, avg_temp,con
         return abs(control_temp/avg_temp)+avg_hashrate
     
     elif target == "hashrate_efficiancy":
-        return abs(control_hashrate/avg_hashrate)+efficiency_jth/20
+        return abs(control_hashrate/avg_hashrate)+efficiency_target
 
     elif target == "efficiancy_temp":
         return abs(control_temp/avg_temp)+hashrate_ratio

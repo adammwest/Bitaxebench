@@ -110,8 +110,8 @@ system_reset_done = False
 
 
 # General Configuration Settigns
-sample_interval = 5   # 30 seconds sample interval
-benchmark_iteration_time = 30#sample_interval*40 # how long each iteration should take
+sample_interval = 30  # sample interval seconds
+benchmark_iteration_time = sample_interval*40 # how long each iteration should take
 
 max_temp = 66         # Will stop if temperature reaches or exceeds this value
 max_allowed_voltage = 1300
